@@ -73,7 +73,7 @@ def train_model_SGD(epochs):
 class Data(Dataset):
     def __init__(self):
         self.x = torch.arange(-3, 3, 0.1).view(-1, 1)
-        self.y = 1 * self.x - 1
+        self.y = 1 * X - 1
         self.len = self.x.shape[0]
 
     def __getitem__(self, idx):
@@ -104,5 +104,32 @@ def train_model_DataLoader(epochs):
 
 
 train_model_DataLoader(10)
+
+# we can also try mini batch descent
+data_set = Data()
+trainLoader = DataLoader(dataset=data_set, batch_size=10)
+LOSS_MINI10 = []
+
+
+def train_model_Mini(epochs):
+    for epoch in range(epochs):
+        Yhat = forward(X)
+        LOSS_MINI10.append(criterion(Yhat, Y).tolist())
+        for x, y in trainLoader:
+            yhat = forward(x)
+            loss = criterion(yhat, y)
+            loss.backward()
+            w.data = w.data - lr * w.grad.data
+            b.data = b.data - lr * b.grad.data
+            w.grad.data.zero_()
+            b.grad.data.zero_()
+
+
+train_model_Mini(epochs=20)
+
+plt.plot(LOSS_SGD, label="Stochastic Gradient Descent")
+plt.plot(LOSS_MINI10, label="Mini-Batch Gradient Descent, Batch size: 10")
+plt.legend()
+plt.show()
 if __name__ == '__main__':
     print()
