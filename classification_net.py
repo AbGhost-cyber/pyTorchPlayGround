@@ -83,7 +83,7 @@ class LayerNet(nn.Module):
         length = len(self.hidden)
         for index, linear_transform in zip(range(length), self.hidden):
             if index < length - 1:
-                activation = F.relu(self.drop(linear_transform(activation)))
+                activation = F.tanh(self.drop(linear_transform(activation)))
             else:
                 activation = linear_transform(activation)
         return activation
@@ -119,7 +119,7 @@ class Data(Dataset):
         le_Drug.fit(['drugX', 'drugY', 'drugC', 'drugA', 'drugB'])
         Y = le_Drug.transform(Y)
 
-        X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
         self.x = torch.tensor(X_train if Train else X_test, dtype=torch.float32)
         self.y = torch.tensor(y_train if Train else y_test, dtype=torch.long)
 
@@ -139,9 +139,9 @@ class Data(Dataset):
 
 drug_train_dataset = Data()
 drug_validation_dataset = Data(Train=False)
-layers = [5, 10, 5]
+layers = [5, 4, 5]
 model = LayerNet(Layers=layers)
-learning_rate = 0.10
+learning_rate = 0.01
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 train_loader = DataLoader(dataset=drug_train_dataset, batch_size=32)
 validation_loader = DataLoader(dataset=drug_validation_dataset, batch_size=32)
@@ -176,7 +176,7 @@ def train(epochs):
 # plot_accuracy_loss(training_results)
 
 # it seems more hidden layers could cause overfitting, let's try dropout
-model_drop = LayerNet(layers, p=0.5)
+model_drop = LayerNet(layers, p=0.2)
 optimizer_drop = torch.optim.Adam(model_drop.parameters(), lr=0.01)
 
 
@@ -242,5 +242,6 @@ plot_accuracy_loss2(training_results)
 #
 # # plot_LOSS()
 # plt.show()
+
 if __name__ == '__main__':
     print()
