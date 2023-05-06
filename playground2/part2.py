@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from PIL import Image
+from matplotlib import pyplot as plt
 from torchvision import models, transforms
 
 
@@ -87,3 +88,19 @@ model_path = "/Users/mac/Downloads/horse2zebra_0.4.0.pth"
 model_data = torch.load(model_path)
 # At this point, netG has acquired all the knowledge it achieved during training
 netG.load_state_dict(model_data)
+netG.eval()
+
+# pre-process and load horse image
+preprocess = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
+img = Image.open("/Users/mac/Downloads/horses.jpeg")
+img_t = preprocess(img)
+batch_t = torch.unsqueeze(img_t, 0)
+batch_out = netG(batch_t)
+
+out_t = (batch_out.data.squeeze() + 1.0) / 2.0
+out_img = transforms.ToPILImage()(out_t)
+plt.imshow(out_img)
+plt.show()
+
+if __name__ == '__main__':
+    print()
