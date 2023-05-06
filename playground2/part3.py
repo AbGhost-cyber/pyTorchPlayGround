@@ -69,7 +69,40 @@ batch = torch.zeros(batch_size, 3, 256, 256, dtype=torch.uint8)
 data_frame = pd.read_csv('/Users/mac/Downloads/winequality-white.csv', delimiter=';')
 wine_features = data_frame.drop(columns=['quality']).values
 wine_labels = data_frame['quality'].values
+
 X = torch.tensor(wine_features, dtype=torch.float32)
 Y = torch.tensor(wine_labels, dtype=torch.long)
+
+# one hot encoding
+Y_onehot = torch.zeros(Y.shape[0], 10)
+Y_onehot.scatter_(1, Y.unsqueeze(1), 1.0)
+
+# obtain mean and std of each column of our feature
+data_mean = torch.mean(X, dim=0)
+data_std = torch.std(X, dim=0)
+# normalize
+normalized_data = (X - data_mean) / data_std
+
+# let's use our eyes to tell good and bad wines apart
+bad_indexes = Y <= 3
+bad_data = X[bad_indexes]
+mid_data = X[(Y > 3) & (Y < 7)]
+good_data = X[Y >= 7]
+bad_mean = torch.mean(bad_data, dim=0)
+mid_mean = torch.mean(mid_data, dim=0)
+good_mean = torch.mean(good_data, dim=0)
+
+for i, args in enumerate(zip(data_frame.columns, bad_mean, mid_mean, good_mean)):
+    print('{:2} {:20} {:6.2f} {:6.2f} {:6.2f}'.format(i, *args))
+
+# a threshold on total sulfur dioxide as a crude criterion for discriminating good wines from bad ones
+total_sulfur_threshold = 141.83
+total_sulfur_data = X[:, 6]
+predicted_indexes = torch.lt(total_sulfur_data, total_sulfur_threshold)
+
+# good wines
+actual_indexes = Y > 5
+
+
 if __name__ == '__main__':
     print()
