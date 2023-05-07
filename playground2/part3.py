@@ -7,6 +7,7 @@ from PIL import Image
 from matplotlib import pyplot as plt
 from torchvision import models, transforms
 from torch import hub
+import numpy as np
 import pandas as pd
 
 torch.manual_seed(1)
@@ -92,8 +93,8 @@ bad_mean = torch.mean(bad_data, dim=0)
 mid_mean = torch.mean(mid_data, dim=0)
 good_mean = torch.mean(good_data, dim=0)
 
-for i, args in enumerate(zip(data_frame.columns, bad_mean, mid_mean, good_mean)):
-    print('{:2} {:20} {:6.2f} {:6.2f} {:6.2f}'.format(i, *args))
+# for i, args in enumerate(zip(data_frame.columns, bad_mean, mid_mean, good_mean)):
+#     print('{:2} {:20} {:6.2f} {:6.2f} {:6.2f}'.format(i, *args))
 
 # a threshold on total sulfur dioxide as a crude criterion for discriminating good wines from bad ones
 total_sulfur_threshold = 141.83
@@ -103,6 +104,65 @@ predicted_indexes = torch.lt(total_sulfur_data, total_sulfur_threshold)
 # good wines
 actual_indexes = Y > 5
 
+# Working with Time Series
+bikes_numpy = np.loadtxt('/Users/mac/Downloads/hour-fixed.csv',
+                         dtype=np.float32, delimiter=',', skiprows=1, converters={1: lambda x: float(x[8:10])})
+bikes = torch.from_numpy(bikes_numpy)
+# pdD = pd.read_csv('/Users/mac/Downloads/hour-fixed.csv', delimiter=',')
+# let's reshape our data to have 3 axes, day, hour and our 17 columns
+daily_bikes = bikes.view(-1, 24, bikes.shape[1])
+# to get N * C * L ordering
+daily_bikes = daily_bikes.transpose(1, 2)
+# one hot encoding for first day
+first_day = bikes[:24].long()
+weather_onehot = torch.zeros(first_day.shape[0], 4)
+# decreases the value by 1 bcos weather situation range(4)
+weather_onehot.scatter_(dim=1, index=first_day[:, 9].unsqueeze(1).long() - 1, value=1.0)
+# concatenate our matrix to our original dataset
+torch.cat((bikes[:24], weather_onehot), 1)
+daily_bikes[:, 9, :] = (daily_bikes[:, 9, :] - 1.0) / 3.0
+# rescale
+temp = daily_bikes[:, 10, :]
+daily_bikes[:, 10, :] = ((daily_bikes[:, 10, :] - torch.mean(temp)) / torch.std(temp))
 
+# Working with Texts
+with open('/Users/mac/Downloads/1342-0.txt', encoding='utf8') as f:
+    text = f.read()
+
+lines = text.split('\n')
+line = lines[200]
+
+# create a tensor that can hold the total number of one-hot-encoded characters for the whole line
+# 128 hardcoded due to the limits of ASCII
+letter_t = torch.zeros(len(line), 128)
+# letter_t will hold a one-hot-encoded character per row
+for i, letter in enumerate(line.lower().strip()):
+    letter_index = ord(letter) if (ord(letter)) < 128 else 0
+    letter_t[i][letter_index] = 1
+
+
+# takes text and returns it in lowercase and stripped of punctuation
+def clean_words(input_str):
+    punctuation = '.,;:"!?”“_-'
+    word_list = input_str.lower().replace('\n', ' ').split()
+    word_list = [word.strip(punctuation) for word in word_list]
+    return word_list
+
+
+words_in_line = clean_words(line)
+
+# mapping of words to indexes in our encoding
+word_list = sorted(set(clean_words(text)))
+word2index_dict = {word: i for (i, word) in enumerate(word_list)}
+
+# create an empty vector and assign the one-hot-encoded values of the word in the sentence
+word_t = torch.zeros(len(words_in_line), len(word2index_dict))
+for i, word in enumerate(words_in_line):
+    word_index = word2index_dict[word]
+    word_t[i][word_index] = 1
+    print('{:2} {:4} {}'.format(i, word_index, word))
+
+# 11, to represent the no of words in our dict
+# print(word_t.shape)
 if __name__ == '__main__':
     print()
