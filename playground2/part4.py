@@ -74,27 +74,59 @@ def grad_fn(t_u, t_c, t_p, w, b):
 #         print('Epoch %d, Loss %f' % (epoch, float(loss)))  # <3>
 #
 #     return params
+n_samples = t_u.shape[0]
+n_val = int(0.2 * n_samples)
+shuffled_indices = torch.randperm(n_samples)
+train_indices = shuffled_indices[:-n_val]
+val_indices = shuffled_indices[-n_val:]
 
-def training_loop(n_epochs):
-    params = torch.tensor([1.0, 0.0], requires_grad=True)
-    learning_rate = 0.01
-    optimizer = optim.SGD([params], lr=learning_rate)
+training_loss = []
+validation_loss = []
+
+
+def training_loop(n_epochs, optimizer, params, train_t_u, val_t_u,
+                  train_t_c, val_t_c):
     for epoch in range(1, n_epochs + 1):
-        t_p = model(t_un, *params)
-        loss = loss_fn(t_p, t_c)
+        train_t_p = model(train_t_u, *params)
+        train_loss = loss_fn(train_t_p, train_t_c)
+        training_loss.append(train_loss.item())
+
+        with torch.no_grad():
+            val_t_p = model(val_t_u, *params)
+            val_loss = loss_fn(val_t_p, val_t_c)
+            validation_loss.append(val_loss.item())
+            assert val_loss.requires_grad == False
 
         optimizer.zero_grad()
-        loss.backward()
+        train_loss.backward()
         optimizer.step()
-        if epoch % 500 == 0:
-            print('Epoch %d, Loss %f' % (epoch, float(loss)))
+
+        if epoch <= 3 or epoch % 500 == 0:
+            print(f"Epoch {epoch}, Training loss {train_loss.item():.4f},"
+                  f" Validation loss {val_loss.item():.4f}")
+
     return params
 
 
-pp = training_loop(n_epochs=5000)
-print(pp)
-# loss.backward()
-# print(params.grad)
-
+learning_rate = 0.01
+params = torch.tensor([1.0, 0.0], requires_grad=True)
+optimizer = optim.SGD([params], lr=learning_rate)
+train_t_u = t_u[train_indices]
+train_t_c = t_c[train_indices]
+val_t_u = t_u[val_indices]
+val_t_c = t_c[val_indices]
+train_t_un = 0.1 * train_t_u
+val_t_un = 0.1 * val_t_u
+training_loop(
+    n_epochs=3000,
+    optimizer=optimizer,
+    params=params,
+    train_t_u=train_t_un,
+    val_t_u=val_t_un,
+    train_t_c=train_t_c,
+    val_t_c=val_t_c)
+# plt.plot(training_loss)
+# plt.plot(validation_loss)
+# plt.show()
 if __name__ == '__main__':
     print()
