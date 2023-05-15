@@ -42,5 +42,6 @@ plt.plot(t_u.numpy(), t_c.numpy(), 'o')
 plt.plot(t_range.numpy(), seq_model(0.1 * t_range).detach().numpy(), 'c-')
 plt.plot(t_u.numpy(), seq_model(0.1 * t_u).detach().numpy(), 'kx')
 plt.show()
+
 if __name__ == '__main__':
     print()
