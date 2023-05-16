@@ -116,27 +116,71 @@ model = nn.Sequential(
 
 # using convolution
 conv = nn.Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=1)
-print(conv.weight.shape, conv.bias.shape)
+# print(conv.weight.shape, conv.bias.shape)
 img, _ = cifar2[0]
 # we need to add the zeroth batch dimension with unsqueeze if we want to call the conv module
 # with one input image, since nn.Conv2d expects a B × C × H × W shaped tensor as input:
 output = conv(img.unsqueeze(0))
 
+
 # we can play with convolution by setting weights by hand and see what happens.
-with torch.no_grad():
-    conv.bias.zero_()
-with torch.no_grad():
-    conv.weight.fill_(1.0 / 9.0)
+# with torch.no_grad():
+#     conv.bias.zero_()
+# with torch.no_grad():
+#     conv.weight.fill_(1.0 / 9.0)
 # plot to see
 # output = conv(img.unsqueeze(0))
 # plt.imshow(output[0, 0].detach(), cmap='gray')
 # plt.show()  # result is blurry
 # let's see another
-conv = nn.Conv2d(3, 1, kernel_size=3, padding=1)
-with torch.no_grad():
-    conv.weight[:] = torch.tensor([[-1.0, 0.0, 1.0],
-                                   [-1.0, 0.0, 1.0],
-                                   [-1.0, 0.0, 1.0]])
-    conv.bias.zero_()
+# conv = nn.Conv2d(3, 1, kernel_size=3, padding=1)
+# with torch.no_grad():
+#     conv.weight[:] = torch.tensor([[-1.0, 0.0, 1.0],
+#                                    [-1.0, 0.0, 1.0],
+#                                    [-1.0, 0.0, 1.0]])
+#     conv.bias.zero_()
+# using max pooling
+# pool = nn.MaxPool2d(2)  # down sample by half
+# output = pool(img.unsqueeze(0))
+# print(output.shape)
+
+# model = nn.Sequential(
+#     nn.Conv2d(3, 16, kernel_size=3, padding=1),
+#     nn.Tanh(),
+#     nn.MaxPool2d(2),
+#     nn.Conv2d(16, 8, kernel_size=3, padding=1),
+#     nn.Tanh(),
+#     nn.MaxPool2d(2)
+# )
+
+# creating our own network as an nn.Module
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
+        self.act1 = nn.Tanh()
+        self.pool1 = nn.MaxPool2d(2)
+        self.conv2 = nn.Conv2d(in_channels=16, out_channels=8, kernel_size=3, padding=1)
+        self.act2 = nn.Tanh()
+        self.pool2 = nn.MaxPool2d(2)
+        self.fc1 = nn.Linear(in_features=8 * 8 * 8, out_features=32)
+        self.act3 = nn.Tanh()
+        self.fc2 = nn.Linear(in_features=32, out_features=2)
+
+    def forward(self, x):
+        # First convolutional layer
+        out = self.pool1(self.ac1(self.conv1(x)))
+        # Second convolutional layer
+        out = self.pool2(self.act2(self.conv2(x)))
+        # Flatten output
+        out = out.view(-1, 8 * 8 * 8)
+        # Fully connected layer 1
+        out = self.act3(self.fc1(out))
+        # Fully connected layer 2
+        out = self.fc2(out)
+        return out
+
+
 if __name__ == '__main__':
     print()
