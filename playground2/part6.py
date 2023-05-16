@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import torch
 from torch import nn, optim
+from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 import numpy as np
 
@@ -62,15 +63,80 @@ loss_fn = nn.NLLLoss()
 learning_rate = 1e-2
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 n_epochs = 100
-for epoch in range(n_epochs):
-    for img, label in cifar2:
-        out = model(img.view(-1).unsqueeze(0))
-        loss = loss_fn(out, torch.tensor([label]))
+# for epoch in range(n_epochs):
+#     for img, label in cifar2:
+#         out = model(img.view(-1).unsqueeze(0))
+#         loss = loss_fn(out, torch.tensor([label]))
+#
+#         optimizer.zero_grad()
+#         loss.backward()
+#         optimizer.step()
+#     print("Epoch: %d, Loss: %f" % (epoch, float(loss)))
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-    print("Epoch: %d, Loss: %f" % (epoch, float(loss)))
+# the above code takes too much time, we can try data loader
+train_loader = DataLoader(cifar2, batch_size=64, shuffle=True)
+# for epoch in range(n_epochs):
+#     for imgs, labels in train_loader:
+#         batch_size = imgs.shape[0]
+#         outputs = model(imgs.view(batch_size, -1))
+#         loss = loss_fn(outputs, labels)
+#
+#         optimizer.zero_grad()
+#         loss.backward()
+#         optimizer.step()
+#     print("Epoch: %d, Loss: %f" % (epoch, float(loss)))
 
+# validate
+val_loader = DataLoader(cifar2_val, batch_size=64, shuffle=False)
+correct = 0
+total = 0
+# with torch.no_grad():
+#     for imgs, labels in val_loader:
+#         batch_size = imgs.shape[0]
+#         outputs = model(imgs.view(batch_size, -1))
+#         _, predicted = torch.max(outputs, dim=1)
+#         total += labels.shape[0]
+#         correct += int((predicted == labels).sum())
+#     print("Accuracy: %f", correct / total)
+#     print("total", total)
+
+# make our model more complicated by adding extra hidden layers
+model = nn.Sequential(
+    nn.Linear(3072, 1024),
+    nn.Tanh(),
+    nn.Linear(1024, 512),
+    nn.Tanh(),
+    nn.Linear(512, 128),
+    nn.Tanh(),
+    nn.Linear(128, 2),
+    nn.LogSoftmax(dim=1))
+# note: we can drop the LogSoftmax and nn.NLLLOSS for CrossEntropyLoss, it's the same
+# numel_list = [p.numel() for p in model.parameters() if p.requires_grad]
+# print(sum(numel_list), numel_list)
+
+# using convolution
+conv = nn.Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=1)
+print(conv.weight.shape, conv.bias.shape)
+img, _ = cifar2[0]
+# we need to add the zeroth batch dimension with unsqueeze if we want to call the conv module
+# with one input image, since nn.Conv2d expects a B × C × H × W shaped tensor as input:
+output = conv(img.unsqueeze(0))
+
+# we can play with convolution by setting weights by hand and see what happens.
+with torch.no_grad():
+    conv.bias.zero_()
+with torch.no_grad():
+    conv.weight.fill_(1.0 / 9.0)
+# plot to see
+# output = conv(img.unsqueeze(0))
+# plt.imshow(output[0, 0].detach(), cmap='gray')
+# plt.show()  # result is blurry
+# let's see another
+conv = nn.Conv2d(3, 1, kernel_size=3, padding=1)
+with torch.no_grad():
+    conv.weight[:] = torch.tensor([[-1.0, 0.0, 1.0],
+                                   [-1.0, 0.0, 1.0],
+                                   [-1.0, 0.0, 1.0]])
+    conv.bias.zero_()
 if __name__ == '__main__':
     print()
