@@ -3,7 +3,8 @@ import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-import numpy as np
+import torch.nn.functional as F
+import datetime
 
 cifar10 = datasets.CIFAR10('data', train=True, download=True)
 cifar10_val = datasets.CIFAR10('data', train=False, download=True)
@@ -159,28 +160,75 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
-        self.act1 = nn.Tanh()
-        self.pool1 = nn.MaxPool2d(2)
         self.conv2 = nn.Conv2d(in_channels=16, out_channels=8, kernel_size=3, padding=1)
-        self.act2 = nn.Tanh()
-        self.pool2 = nn.MaxPool2d(2)
         self.fc1 = nn.Linear(in_features=8 * 8 * 8, out_features=32)
-        self.act3 = nn.Tanh()
         self.fc2 = nn.Linear(in_features=32, out_features=2)
 
     def forward(self, x):
         # First convolutional layer
-        out = self.pool1(self.ac1(self.conv1(x)))
+        out = F.max_pool2d(torch.tanh(self.conv1(x)), 2)
         # Second convolutional layer
-        out = self.pool2(self.act2(self.conv2(x)))
+        out = F.max_pool2d(torch.tanh(self.conv2(out)), 2)
         # Flatten output
         out = out.view(-1, 8 * 8 * 8)
         # Fully connected layer 1
-        out = self.act3(self.fc1(out))
+        out = torch.tanh(self.fc1(out))
         # Fully connected layer 2
         out = self.fc2(out)
         return out
 
+
+# numel_list = [p.numel() for p in deep_model.parameters()]
+# print(sum(numel_list), numel_list)
+
+def training_loop(n_epochs, optimizer, model, loss_fn, train_loader):
+    for epoch in range(1, n_epochs + 1):
+        loss_train = 0.0
+        for imgs, labels in train_loader:
+            outputs = model(imgs)
+            loss = loss_fn(outputs, labels)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            loss_train += loss.item()
+        if epoch == 1 or epoch % 10 == 0:
+            print('{} Epoch {}, Training loss {}'.format(datetime.datetime.now(), epoch,
+                                                         loss_train / len(train_loader)))
+
+
+train_loader = torch.utils.data.DataLoader(cifar2, batch_size=64,
+                                           shuffle=True)
+deep_model = Net()
+optimizer = optim.SGD(deep_model.parameters(), lr=1e-2)
+loss_fn = nn.CrossEntropyLoss()
+
+training_loop(
+    n_epochs=100,
+    optimizer=optimizer,
+    model=deep_model,
+    loss_fn=loss_fn,
+    train_loader=train_loader
+)
+
+
+# validation
+def validate(model, train_loader, val_loader):
+    for name, loader in [("train", train_loader), ("val", val_loader)]:
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for imgs, labels in loader:
+                outputs = model(imgs)
+                _, predicted = torch.max(outputs, dim=1)
+                total += labels.shape[0]
+                correct += int((predicted == labels).sum())
+    print("Accuracy {}: {:.2f}".format(name, correct / total))
+    validate(model, train_loader, val_loader)
+
+
+# save
+data_path = "trained"
+torch.save(model.state_dict(), data_path + 'birds_vs_airplanes.pt')
 
 if __name__ == '__main__':
     print()
