@@ -33,5 +33,9 @@ b = a * 2
 #     print(i)
 my_list = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 my_slice = slice(2, 6)
+matrixA = torch.tensor([[1, 2, 1], [2, 2, 1]])
+matrixB = torch.tensor([1, 1, 1])
+matrixC = torch.matmul(matrixA, matrixB)
+print(matrixC)
 if __name__ == '__main__':
     print()

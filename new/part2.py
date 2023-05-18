@@ -48,9 +48,70 @@ class SyntheticRegressionData:
 
 
 data = SyntheticRegressionData(w=torch.tensor([2, -3.4]), b=2)
+
+
 # print('features:', data.X[0], '\nlabel:', data.y[0])
 # X, y = next(iter(data.get_dataloader(train=True)))
 # print('X shape:', X.shape, '\ny shape:', y.shape)
-print(len(data.get_dataLoader(train=False)))
+# print(len(data.get_dataLoader(train=False)))
+
+class LinearRegressionScratch(nn.Module):
+    def __init__(self, num_inputs, lr, sigma=0.01):
+        super(LinearRegressionScratch, self).__init__()
+        self.lr = lr
+        self.w = torch.normal(mean=0.0, std=sigma, size=(num_inputs, 1), requires_grad=True)
+        self.b = torch.zeros(1, requires_grad=True)
+
+    def forward(self, X):
+        return torch.matmul(X, self.w) + self.b
+
+    def loss(self, yhat, y):
+        l = (yhat - y) ** 2 / 2
+        return l.mean()
+
+    def optim(self):
+        return SGD(params=[self.w, self.b], lr=self.lr)
+
+    def training_step(self, batch):
+        l = self.loss(self(*batch[:-1]), batch[-1])
+        # self.plot('loss', l, train=True)
+        return l
+
+    def validation_step(self, batch):
+        l = self.loss(self(*batch[:-1]), batch[-1])
+        # self.plot('loss', l, train=False)
+        return l
+
+
+class SGD:
+
+    def __init__(self, params, lr):
+        self.params = params
+        self.lr = lr
+
+    def step(self):
+        for param in self.params:
+            param -= self.lr * param.grad
+
+    def zero_grad(self):
+        for param in self.params:
+            if param.grad is not None:
+                param.grad.zero_()
+
+
+model = LinearRegressionScratch(num_inputs=2, lr=0.03)
+data = SyntheticRegressionData(w=torch.tensor([2, -3.4]), b=4.2)
+
+
+def train_model():
+    model.train()
+    for batch in data.train_dataloader():
+        loss = model.training_step(batch)
+        model.optim().zero_grad()
+        with torch.no_grad():
+            loss.backward()
+
+
+
 if __name__ == '__main__':
     print()
