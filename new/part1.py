@@ -27,7 +27,11 @@ z1.sum().backward()
 # print(x1.grad)
 a = torch.rand(size=(), requires_grad=True)
 b = a * 2
-print(b.norm())
+# print(b.norm())
 
+# for i in range(0, 2000, 32):
+#     print(i)
+my_list = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+my_slice = slice(2, 6)
 if __name__ == '__main__':
     print()
