@@ -1,5 +1,6 @@
 import random
 
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, TensorDataset, DataLoader
@@ -79,8 +80,8 @@ class LinearRegressionScratch(nn.Module):
 
     def validation_step(self, batch):
         l = self.loss(self(*batch[:-1]), batch[-1])
-        # self.plot('loss', l, train=False)
         return l
+        # self.plot('loss', l, train=False)
 
 
 class SGD:
@@ -99,19 +100,61 @@ class SGD:
                 param.grad.zero_()
 
 
-model = LinearRegressionScratch(num_inputs=2, lr=0.03)
-data = SyntheticRegressionData(w=torch.tensor([2, -3.4]), b=4.2)
+lr = 0.03
+model = LinearRegressionScratch(num_inputs=2, lr=lr)
+data = SyntheticRegressionData(w=torch.tensor([0.0, 0.0]), b=4.2)
+
+TRAIN_LOSS = []
+VAL_LOSS = []
 
 
-def train_model():
-    model.train()
-    for batch in data.train_dataloader():
-        loss = model.training_step(batch)
-        model.optim().zero_grad()
-        with torch.no_grad():
-            loss.backward()
+def train_model(epochs):
+    for epoch in range(epochs):
+        model.train()
+        for batch in data.train_dataloader():
+            loss = model.training_step(batch)
+            TRAIN_LOSS.append(loss.item())
+            model.optim().zero_grad()
+            with torch.no_grad():
+                loss.backward()
+                model.optim().step()
+        if data.val_dataloader() is None:
+            return
+        model.eval()
+        for batch in data.val_dataloader():
+            with torch.no_grad():
+                val_loss = model.validation_step(batch)
+                VAL_LOSS.append(val_loss)
 
 
+# train_model(epochs=3)
+# plt.plot(TRAIN_LOSS)
+# plt.plot(VAL_LOSS)
+# plt.show()
 
+# For standard operations, we can use a framework’s predefined layers, which allow us to focus on the
+# layers used to construct the model rather than worrying about their implementation.
+
+class LinearRegression(nn.Module):
+    def __init__(self, lr):
+        super(LinearRegression, self).__init__()
+        self.net = nn.LazyLinear(out_features=1)
+        self.net.weight.data.normal_(0, 0.01)
+        self.lr = lr
+        self.net.bias.data.fill_(0)
+
+    def forward(self, X):
+        return self.net(X)
+
+    def loss(self, y_hat, y):
+        fn = nn.MSELoss()
+        return fn(y_hat, y)
+
+    def configure_optimizers(self):
+        return torch.optim.SGD(params=self.parameters(), lr=self.lr)
+
+
+Lr = LinearRegression(lr=0.03)
+yhat = Lr(torch.tensor([1.0]))
 if __name__ == '__main__':
     print()
