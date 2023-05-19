@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import SGD
@@ -5,6 +7,8 @@ from torch.utils.data import Dataset, TensorDataset, DataLoader
 
 
 # higher dimensional linear regression practice
+def l2_penalty(w):
+    return (w ** 2).sum() / 2
 
 
 class Data(Dataset):
@@ -45,9 +49,6 @@ class LinearRegressionScratch(nn.Module):
     def forward(self, X):
         return torch.matmul(X, self.w) + self.b
 
-    def l2_penalty(self):
-        return (self.w ** 2).sum() / 2
-
     def loss(self, yhat, y):
         l = (yhat - y) ** 2 / 2
         return l.mean()
@@ -63,3 +64,97 @@ class LinearRegressionScratch(nn.Module):
     def validation_step(self, batch):
         l = self.loss(self(*batch[:-1]), batch[-1])
         return l
+
+
+class LinearRegression(nn.Module):
+    def __init__(self, lr):
+        super(LinearRegression, self).__init__()
+        self.net = nn.LazyLinear(out_features=1)
+        self.net.weight.data.normal_(0, 0.01)
+        self.lr = lr
+        self.net.bias.data.fill_(0)
+
+    def forward(self, X):
+        return self.net(X)
+
+    def loss(self, y_hat, y):
+        fn = nn.MSELoss()
+        return fn(y_hat, y)
+
+    def configure_optimizers(self):
+        return SGD(params=self.parameters(), lr=self.lr)
+
+    def optim(self):
+        return SGD(params=self.parameters(), lr=self.lr)
+
+    def training_step(self, batch):
+        l = self.loss(self(*batch[:-1]), batch[-1])
+        # self.plot('loss', l, train=True)
+        return l
+
+    def validation_step(self, batch):
+        l = self.loss(self(*batch[:-1]), batch[-1])
+        return l
+
+
+class WeightDecayScratch(LinearRegressionScratch):
+    def __init__(self, num_inputs, lambd, lr, sigma=0.01):
+        super().__init__(num_inputs, lr, sigma)
+        # The value of `lambd` can be set by the user of the model to adjust the strength of the regularization.
+        # A higher value of `lambd` will result in stronger regularization, which can help prevent overfitting
+        # but may also lead to underfitting if set too high
+        self.lambd = lambd
+
+    def loss(self, yhat, y):
+        return super().loss(yhat, y) + self.lambd * l2_penalty(self.w)
+
+
+class WeightDecay(LinearRegression):
+    def __init__(self, wd, lr):
+        super().__init__(lr=lr)
+        self.wd = wd
+
+    def configure_optimizers(self):
+        return SGD([
+            {'params': self.net.weight, 'weight_decay': self.wd},
+            {'params': self.net.bias}], lr=self.lr)
+
+    def get_w_b(self):
+        return [self.net.weight, self.net.bias]
+
+
+# The following code fits our model on the training set with 20 examples and
+# evaluates it on the validation set with 100 examples.
+data = Data(num_train=20, num_val=100, num_inputs=200, batch_size=5)
+lambd = 40
+lr = 0.01
+model = WeightDecay(wd=3, lr=lr)
+max_epochs = 10
+
+TRAIN_LOSS = []
+VAL_LOSS = []
+for epoch in range(max_epochs):
+    model.train()
+    for batch in data.train_dataLoader():
+        loss = model.training_step(batch)
+        TRAIN_LOSS.append(loss.detach())
+        model.optim().zero_grad()
+        with torch.no_grad():
+            loss.backward()
+            model.optim().step()
+    if data.val_dataloader() is None:
+        pass
+    model.eval()
+    for batch in data.val_dataloader():
+        with torch.no_grad():
+            val_loss = model.validation_step(batch)
+            VAL_LOSS.append(val_loss)
+print(model.get_w_b()[0])
+print('L2 norm of w:', float(l2_penalty(w=model.get_w_b()[0])))
+
+plt.plot(np.log(TRAIN_LOSS))
+plt.plot(np.log(VAL_LOSS), linestyle='dotted')
+plt.show()
+
+if __name__ == '__main__':
+    print()
