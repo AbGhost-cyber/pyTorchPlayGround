@@ -93,8 +93,29 @@ X[:, 2:6] = 0
 K = torch.tensor([[1.0, -1.0]])
 # perform the cross-correlation
 Y = corr2d(X, K)
-plt.imshow(Y.numpy(), cmap='gray')
-plt.show()
+# plt.imshow(Y.numpy(), cmap='gray')
+# plt.show()
 # we detect 1 for the edge from white to black and -1 for the edge from black to white. All other outputs take value 0.
 # if we apply the kernel to the transposed form of the image it will vanish because the Kernel K only
 # detect vertical edges
+
+# we can learn the above kernel by looking at the input– output pairs only
+# Construct a two-dimensional convolutional layer with 1 output channel and a
+# kernel of shape (1, 2). For the sake of simplicity, we ignore the bias here
+conv2d = nn.LazyConv2d(1, kernel_size=(1, 2), bias=False)
+# (B, C, H, W)
+X = X.reshape((1, 1, 6, 8))
+Y = Y.reshape((1, 1, 6, 7))
+lr = 3e-2  # Learning rate
+
+for i in range(10):
+    Y_hat = conv2d(X)
+    loss = (Y_hat - Y) ** 2
+    conv2d.zero_grad()
+    loss.sum().backward()
+    # update kernel
+    conv2d.weight.data[:] -= lr * conv2d.weight.grad
+    if (i + 1) % 2 == 0:
+        print(f'epoch {i + 1}, loss {loss.sum():.3f}')
+
+print(conv2d.weight.data.reshape((1, 2)))

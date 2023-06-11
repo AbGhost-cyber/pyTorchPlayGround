@@ -227,8 +227,8 @@ def validate(model, train_loader, val_loader):
 
 
 # save
-data_path = "trained"
-torch.save(model.state_dict(), data_path + 'birds_vs_airplanes.pt')
+# data_path = "trained"
+# torch.save(model.state_dict(), data_path + 'birds_vs_airplanes.pt')
 
 if __name__ == '__main__':
     print()
