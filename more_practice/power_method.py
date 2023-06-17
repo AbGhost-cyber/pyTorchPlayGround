@@ -6,20 +6,15 @@ from scipy.linalg import norm
 
 # Define value of n
 n = 5
-
 # Define random matrix B and construct matrix A
 B = np.random.rand(n, n)
 A = B + B.T
-
 # Define initial vector
 u = np.ones(n)
-
 # Define stop criterion 10^-6
 eps = 1e-6
-
 # Define maximum number of iterations
 max_iter = 1000
-
 # Initialize iteration counter
 k = 0
 
